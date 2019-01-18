@@ -13,10 +13,10 @@ namespace DynuUpdate2
         static void Main(string[] args)
         {
             var config = ConfigurationManager.AppSettings;
-
             var span = 30 * 1000 * 60;
             var my_domain = "";
             var my_password = "";
+            var my_proxy = "";
             try
             {
                 my_domain = config["my_domain"];
@@ -45,7 +45,7 @@ namespace DynuUpdate2
             }
             catch (NullReferenceException)
             {
-                
+
                 Log("获取密码出错，结束运行。");
                 Console.ReadKey(false);
                 return;
@@ -66,6 +66,14 @@ namespace DynuUpdate2
             {
                 Log("获取time_span设置错误，更新时间将被设置为30分钟。");
             }
+            try
+            {
+                my_proxy = config["my_proxy"];
+            }
+            catch (NullReferenceException)
+            {
+                Log("获取代理失败，将直连。");
+            }
             while (true)
             {
                 using (WebClient client = new WebClient())
@@ -79,8 +87,24 @@ namespace DynuUpdate2
                         string ip = ip_json_obj["ip"].ToString();
                         string password_sha256 = SHA256(my_password);
                         string update_url = $"https://api.dynu.com/nic/update?hostname={my_domain}&myip={ip}&password={password_sha256} ";
+                        if (!string.IsNullOrEmpty(my_proxy))
+                        {
+                            client.Proxy = new WebProxy(my_proxy);
+                        }
                         var update_response = client.DownloadString(update_url);
-                        Log(update_response);
+                        if (update_response.Contains("badauth"))
+                        {
+                            Log("密码错误。");
+                        }
+                        else if (update_response.Contains("nochg"))
+                        {
+                            Log("无变化。");
+                        }
+                        else
+                        {
+                            Log(update_response);
+                        }
+
                     }
                     catch (TimeoutException to)
                     {
@@ -89,6 +113,10 @@ namespace DynuUpdate2
                     catch (Newtonsoft.Json.JsonException)
                     {
                         Log("转换JSON错误。");
+                    }
+                    catch (Exception e)
+                    {
+                        throw;
                     }
                 }
                 Thread.Sleep(span);
