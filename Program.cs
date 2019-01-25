@@ -106,7 +106,7 @@ namespace DynuUpdate2
                         }
 
                     }
-                    catch (TimeoutException to)
+                    catch (WebException to)
                     {
                         Log("获取超时。");
                     }
